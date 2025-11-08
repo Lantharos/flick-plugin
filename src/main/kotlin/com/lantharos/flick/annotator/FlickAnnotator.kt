@@ -38,7 +38,6 @@ class FlickAnnotator : Annotator {
 
         val file = element.containingFile
         val fileText = file.text
-        val offset = element.textRange.startOffset
 
         // Get declared plugins from the file
         val declaredPlugins = getDeclaredPlugins(fileText)
@@ -186,7 +185,6 @@ class FlickAnnotator : Annotator {
         val blockPattern = Regex("""(task|route|assume|each|march|group|select|suppose|do)\b.*=>|(maybe|otherwise|when)\b.*=>|\bend\b""")
         blockPattern.findAll(textAfterArrow).forEach { match ->
             val matchText = match.value.trim()
-            val fullMatch = match.value
 
             when {
                 matchText == "end" -> {
@@ -408,7 +406,7 @@ class FlickAnnotator : Annotator {
         val lastOpenParen = textBefore.lastIndexOf('(')
         val lastCloseParen = textBefore.lastIndexOf(')')
         if (lastOpenParen > lastCloseParen) {
-            val beforeParen = textBefore.substring(0, lastOpenParen).trim()
+            val beforeParen = textBefore.take(lastOpenParen).trim()
             if (beforeParen.endsWith("num") || beforeParen.endsWith("literal")) {
                 return
             }
@@ -729,10 +727,6 @@ class FlickAnnotator : Annotator {
         // Arguments can be: numbers, strings, identifiers (but not keywords), true/false
         val firstChar = restOfLine[0]
         return firstChar.isLetterOrDigit() || firstChar in "\"'{" || restOfLine.startsWith("yes") || restOfLine.startsWith("no")
-    }
-
-    private fun isFunctionName(text: String): Boolean {
-        return text.matches(Regex("[a-z_][a-zA-Z0-9_]*"))
     }
 }
 
