@@ -1,0 +1,103 @@
+# Sample Flick Code for Testing IntelliJ Plugin
+
+# Variable declarations
+free name = "Alice"
+lock maxUsers = 100
+
+# Groups (classes)
+group Player {
+    free num health = 100
+    free literal playerName
+
+    task greet =>
+        print "Hello, I am " and playerName
+    end
+
+    task takeDamage with num(amount) =>
+        health := health - amount
+        print playerName and " took damage! Health: " and health
+    end
+
+    task isAlive =>
+        give health > 0
+    end
+}
+
+# Create instance - auto-instantiation works!
+free Player p = Player "Bob"
+p/greet
+p/takeDamage 25
+
+# Return values
+task double with num(x) =>
+    give x * 2
+end
+
+free result = double 21
+print "Double: " and result
+
+# Ternary expressions (inline assume)
+free age = 25
+free status = assume age >= 18 => "Adult", otherwise => "Minor"
+print "Status: " and status
+
+# Nested ternary
+free score = 85
+free grade = assume score >= 90 => "A", otherwise => assume score >= 80 => "B", otherwise => "C"
+print "Grade: " and grade
+
+# Control flow
+assume age >= 18 =>
+    print "Adult"
+maybe age >= 13 =>
+    print "Teenager"
+otherwise =>
+    print "Child"
+end
+
+# Loops
+free fruits = ["apple", "banana", "cherry"]
+each fruit in fruits =>
+    print "- " and fruit
+end
+
+march i from 1 to 5 =>
+    print "Number: " and i
+end
+
+# Web plugin
+declare web@3000
+
+route GET "/" =>
+    respond "Welcome to Flick!"
+end
+
+route POST "/api/data" =>
+    free data = body
+    respond json=data, status=201
+end
+
+# File operations
+declare files
+
+free content = read "config.txt"
+write "output.txt", "Hello World"
+
+# JSON operations
+free config = {"env": "production", "port": 8080}
+free jsonStr = JSON/stringify config
+print jsonStr
+
+# Tasks (functions) - auto-call without arguments
+task greetUser with literal(username) =>
+    print "Welcome, " and username
+end
+
+greetUser "Alice"
+
+task sayHello =>
+    print "Hello!"
+end
+
+sayHello  # Auto-calls even without ()
+

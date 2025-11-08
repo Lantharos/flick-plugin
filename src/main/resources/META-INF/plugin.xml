@@ -1,0 +1,89 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
+    <id>com.lantharos.flick</id>
+
+    <!-- Public plugin name should be written in Title Case.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-name -->
+    <name>Flick</name>
+
+    <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
+    <vendor url="https://lantharos.com">Lantharos</vendor>
+
+    <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
+    <description><![CDATA[
+        Flick language support for IntelliJ-based IDEs.
+    ]]></description>
+
+    <!-- Product and plugin compatibility requirements.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+    <depends>com.intellij.modules.platform</depends>
+
+    <!-- Extension points defined by the plugin.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- File Type -->
+        <fileType
+            name="Flick"
+            implementationClass="com.lantharos.flick.FlickFileType"
+            fieldName="INSTANCE"
+            language="Flick"
+            extensions="fk"/>
+
+        <!-- Language -->
+        <lang.parserDefinition
+            language="Flick"
+            implementationClass="com.lantharos.flick.FlickParserDefinition"/>
+
+        <!-- Syntax Highlighting -->
+        <lang.syntaxHighlighterFactory
+            language="Flick"
+            implementationClass="com.lantharos.flick.FlickSyntaxHighlighterFactory"/>
+
+        <!-- Code Completion -->
+        <completion.contributor
+            language="Flick"
+            implementationClass="com.lantharos.flick.FlickCompletionContributor"/>
+
+        <!-- Commenter -->
+        <lang.commenter
+            language="Flick"
+            implementationClass="com.lantharos.flick.FlickCommenter"/>
+
+        <!-- Brace Matcher -->
+        <lang.braceMatcher
+            language="Flick"
+            implementationClass="com.lantharos.flick.FlickBraceMatcher"/>
+
+        <!-- Formatter - DISABLED to avoid conflicts with EnterHandler -->
+        <!--
+        <lang.formatter
+            language="Flick"
+            implementationClass="com.lantharos.flick.FlickFormattingModelBuilder"/>
+        -->
+
+        <!-- Enter Handler for smart indentation -->
+        <enterHandlerDelegate
+            implementation="com.lantharos.flick.FlickEnterHandler"/>
+
+        <!-- Annotator for errors and warnings -->
+        <annotator
+            language="Flick"
+            implementationClass="com.lantharos.flick.FlickAnnotator"/>
+
+        <!-- Typed Handler for auto-indentation -->
+        <typedHandler
+            implementation="com.lantharos.flick.FlickTypedHandler"/>
+
+        <!-- Color Settings Page -->
+        <colorSettingsPage
+            implementation="com.lantharos.flick.FlickColorSettingsPage"/>
+
+        <!-- Run Configuration -->
+        <configurationType
+            implementation="com.lantharos.flick.FlickConfigurationType"/>
+        <runConfigurationProducer
+            implementation="com.lantharos.flick.FlickRunConfigurationProducer"/>
+    </extensions>
+</idea-plugin>
