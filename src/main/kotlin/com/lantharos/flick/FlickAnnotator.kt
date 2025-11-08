@@ -16,11 +16,13 @@ val BUILTIN_FUNCTIONS: Set<String> = setOf(
 val WEB_PLUGIN_KEYWORDS: Set<String> = setOf("route", "respond", "GET", "POST", "PUT", "DELETE", "PATCH")
 val WEB_ROUTE_ONLY_KEYWORDS: Set<String> = setOf("query", "body", "headers") // Only usable inside route blocks
 val FILE_PLUGIN_KEYWORDS: Set<String> = setOf("read", "write", "exists", "listdir")
+val TIME_PLUGIN_KEYWORDS: Set<String> = setOf("now", "timestamp", "sleep")
 
 // Map plugins to their keywords
 val PLUGIN_KEYWORDS: Map<String, Set<String>> = mapOf(
     "web" to WEB_PLUGIN_KEYWORDS,
-    "file" to FILE_PLUGIN_KEYWORDS
+    "files" to FILE_PLUGIN_KEYWORDS,
+    "time" to TIME_PLUGIN_KEYWORDS
 )
 
 class FlickAnnotator : Annotator {
@@ -347,7 +349,7 @@ class FlickAnnotator : Annotator {
             "give", "respond", "GET", "POST", "PUT", "DELETE", "PATCH", "num", "literal"
         )
         if (text in allKeywords || text in BUILTIN_FUNCTIONS || text in WEB_PLUGIN_KEYWORDS ||
-            text in WEB_ROUTE_ONLY_KEYWORDS || text in FILE_PLUGIN_KEYWORDS) {
+            text in WEB_ROUTE_ONLY_KEYWORDS || text in FILE_PLUGIN_KEYWORDS || text in TIME_PLUGIN_KEYWORDS) {
             return
         }
 
@@ -363,14 +365,32 @@ class FlickAnnotator : Annotator {
         // Skip if THIS SPECIFIC identifier is being declared
         // Check various declaration contexts
 
-        // Variable declaration: free/lock [type] IDENTIFIER =
-        val varDeclPattern = Regex("""(?:free|lock)\s+(?:num\s+|literal\s+|[A-Z][a-zA-Z0-9_]*\s+)?${Regex.escape(text)}\s*=""")
-        if (varDeclPattern.containsMatchIn(currentLine)) {
-            val match = varDeclPattern.find(currentLine)
+        // Variable declaration: free/lock [type] IDENTIFIER = (initialized)
+        // Match both := and =
+        // Use trimmed line to handle indentation
+        val trimmedLine = currentLine.trimStart()
+        val indentLength = currentLine.length - trimmedLine.length
+
+        val varDeclPattern = Regex("""(?:free|lock)\s+(?:num\s+|literal\s+|[A-Z][a-zA-Z0-9_]*\s+)?${Regex.escape(text)}\s*(:?=)""")
+        if (varDeclPattern.containsMatchIn(trimmedLine)) {
+            val match = varDeclPattern.find(trimmedLine)
             if (match != null) {
-                // Make sure this identifier is at the declaration position, not after the =
-                val matchEnd = lineStart + match.range.last
+                // Adjust match position for indentation
+                val matchEnd = lineStart + indentLength + match.range.last
                 if (offset < matchEnd) {
+                    return
+                }
+            }
+        }
+
+        // Uninitialized variable declaration: free/lock type IDENTIFIER (no =)
+        val varDeclUninitPattern = Regex("""(?:free|lock)\s+(?:num|literal|[A-Z][a-zA-Z0-9_]*)\s+${Regex.escape(text)}\b(?!\s*=)""")
+        if (varDeclUninitPattern.containsMatchIn(trimmedLine)) {
+            val match = varDeclUninitPattern.find(trimmedLine)
+            if (match != null) {
+                val matchStart = lineStart + indentLength + match.range.first
+                val matchEnd = lineStart + indentLength + match.range.last
+                if (offset in matchStart..matchEnd) {
                     return
                 }
             }
@@ -378,10 +398,10 @@ class FlickAnnotator : Annotator {
 
         // Task declaration: task IDENTIFIER with/=>
         val taskDeclPattern = Regex("""task\s+${Regex.escape(text)}\s*(?:with|=>)""")
-        if (taskDeclPattern.containsMatchIn(currentLine)) {
-            val match = taskDeclPattern.find(currentLine)
+        if (taskDeclPattern.containsMatchIn(trimmedLine)) {
+            val match = taskDeclPattern.find(trimmedLine)
             if (match != null) {
-                val matchEnd = lineStart + match.range.last
+                val matchEnd = lineStart + indentLength + match.range.last
                 if (offset < matchEnd) {
                     return
                 }
@@ -399,12 +419,12 @@ class FlickAnnotator : Annotator {
         }
 
         // Skip if in loop variable: each varname in ... or march varname from ...
-        if (currentLine.matches(Regex("""(?:each|march)\s+${Regex.escape(text)}\s+(?:in|from).*"""))) {
+        if (trimmedLine.matches(Regex("""(?:each|march)\s+${Regex.escape(text)}\s+(?:in|from).*"""))) {
             return
         }
 
         // Skip if in group/blueprint declaration
-        if (currentLine.matches(Regex("""(?:group|blueprint)\s+${Regex.escape(text)}\s*\{.*"""))) {
+        if (trimmedLine.matches(Regex("""(?:group|blueprint)\s+${Regex.escape(text)}\s*\{.*"""))) {
             return
         }
 
@@ -428,6 +448,8 @@ class FlickAnnotator : Annotator {
                     val groupStartPattern = Regex("""group\s+${Regex.escape(className)}\s*\{""")
                     val groupStartMatch = groupStartPattern.find(fileText)
 
+                    var methodFound = false
+
                     if (groupStartMatch != null) {
                         val groupStart = groupStartMatch.range.last + 1
 
@@ -445,20 +467,31 @@ class FlickAnnotator : Annotator {
                         val groupBody = fileText.substring(groupStart, groupEnd)
                         val methodPattern = Regex("""task\s+${Regex.escape(text)}\b""")
 
-                        if (!methodPattern.containsMatchIn(groupBody)) {
-                            // Method doesn't exist - always error
-                            holder.newAnnotation(
-                                HighlightSeverity.ERROR,
-                                "Method '$text' is not defined in class '$className'"
-                            )
-                                .range(element)
-                                .create()
+                        if (methodPattern.containsMatchIn(groupBody)) {
+                            methodFound = true
                         }
-                    } else {
-                        // Group not found - error
+                    }
+
+                    // Also check for methods implemented via 'do' statements (blueprint implementations)
+                    if (!methodFound) {
+                        val doPattern = Regex("""do\s+\w+\s+for\s+${Regex.escape(className)}\s*=>([\s\S]*?)end""")
+                        val doMatches = doPattern.findAll(fileText)
+
+                        for (doMatch in doMatches) {
+                            val doBody = doMatch.groupValues[1]
+                            val methodPattern = Regex("""task\s+${Regex.escape(text)}\b""")
+                            if (methodPattern.containsMatchIn(doBody)) {
+                                methodFound = true
+                                break
+                            }
+                        }
+                    }
+
+                    if (!methodFound) {
+                        // Method doesn't exist - error
                         holder.newAnnotation(
                             HighlightSeverity.ERROR,
-                            "Class '$className' is not defined"
+                            "Method '$text' is not defined in class '$className'"
                         )
                             .range(element)
                             .create()
@@ -472,12 +505,22 @@ class FlickAnnotator : Annotator {
         }
 
         // Skip if this is a named parameter (like json=, status=)
-        if (textAfter.startsWith("=") && !textAfter.startsWith("==") && !textAfter.startsWith("=>")) {
+        // Check if identifier is immediately followed by = (not == or =>)
+        val charAfterIdentifier = fileText.getOrNull(offset + text.length)
+        if (charAfterIdentifier == '=' &&
+            fileText.getOrNull(offset + text.length + 1) != '=' &&
+            fileText.getOrNull(offset + text.length + 1) != '>') {
+            return
+        }
+
+        // Skip if this is a property access with brackets like config["mode"]
+        // The identifier before [ is being accessed, not called
+        if (textAfter.trimStart().startsWith("[")) {
             return
         }
 
         // Skip if in declare statement
-        if (currentLine.startsWith("declare")) {
+        if (trimmedLine.startsWith("declare")) {
             return
         }
 
@@ -545,10 +588,12 @@ class FlickAnnotator : Annotator {
             if (commentIndex >= 0) line.substring(0, commentIndex) else line
         }
 
-        // Check for free/lock variable declarations BEFORE this offset
-        val varPattern = Regex("""(?:free|lock)\s+(?:num\s+|literal\s+|[A-Z][a-zA-Z0-9_]*\s+)?${Regex.escape(varName)}\s*=""")
-        if (varPattern.containsMatchIn(cleanText)) {
-            // Make sure it's not inside a function that has ended
+        // Check for free/lock variable declarations BEFORE this offset (with or without initialization)
+        // Matches: free varname = ... OR free type varname (uninitialized)
+        val varPatternInit = Regex("""(?:free|lock)\s+(?:num\s+|literal\s+|[A-Z][a-zA-Z0-9_]*\s+)?${Regex.escape(varName)}\s*=""")
+        val varPatternUninit = Regex("""(?:free|lock)\s+(?:num|literal|[A-Z][a-zA-Z0-9_]*)\s+${Regex.escape(varName)}\b""")
+
+        if (varPatternInit.containsMatchIn(cleanText) || varPatternUninit.containsMatchIn(cleanText)) {
             return true
         }
 
@@ -671,7 +716,7 @@ class FlickAnnotator : Annotator {
         // Skip operators and keywords that are NOT function arguments
         val nonArgumentStarters = setOf(
             "and", "or", "not", "==", "!=", "<=", ">=", "<", ">", "+", "-", "*", "/",
-            ":=", "=", "=>", ",", ")", "]", "}", "then", "end"
+            ":=", "=", "=>", ",", ")", "]", "}", "then", "end", "[", "("
         )
 
         // Check if it starts with any non-argument starter
@@ -682,9 +727,9 @@ class FlickAnnotator : Annotator {
         }
 
         // Check if the rest of the line starts with something that could be an argument
-        // Arguments can be: numbers, strings, identifiers (but not keywords), true/false, opening brackets/parens
+        // Arguments can be: numbers, strings, identifiers (but not keywords), true/false
         val firstChar = restOfLine[0]
-        return firstChar.isLetterOrDigit() || firstChar in "\"'{[(" || restOfLine.startsWith("yes") || restOfLine.startsWith("no")
+        return firstChar.isLetterOrDigit() || firstChar in "\"'{" || restOfLine.startsWith("yes") || restOfLine.startsWith("no")
     }
 
     private fun isFunctionName(text: String): Boolean {
