@@ -26,7 +26,7 @@
         <!-- File Type -->
         <fileType
             name="Flick"
-            implementationClass="com.lantharos.flick.FlickFileType"
+            implementationClass="com.lantharos.flick.core.FlickFileType"
             fieldName="INSTANCE"
             language="Flick"
             extensions="fk"/>
@@ -34,27 +34,27 @@
         <!-- Language -->
         <lang.parserDefinition
             language="Flick"
-            implementationClass="com.lantharos.flick.FlickParserDefinition"/>
+            implementationClass="com.lantharos.flick.parser.FlickParserDefinition"/>
 
         <!-- Syntax Highlighting -->
         <lang.syntaxHighlighterFactory
             language="Flick"
-            implementationClass="com.lantharos.flick.FlickSyntaxHighlighterFactory"/>
+            implementationClass="com.lantharos.flick.highlighting.FlickSyntaxHighlighterFactory"/>
 
         <!-- Code Completion -->
         <completion.contributor
             language="Flick"
-            implementationClass="com.lantharos.flick.FlickCompletionContributor"/>
+            implementationClass="com.lantharos.flick.editor.FlickCompletionContributor"/>
 
         <!-- Commenter -->
         <lang.commenter
             language="Flick"
-            implementationClass="com.lantharos.flick.FlickCommenter"/>
+            implementationClass="com.lantharos.flick.editor.FlickCommenter"/>
 
         <!-- Brace Matcher -->
         <lang.braceMatcher
             language="Flick"
-            implementationClass="com.lantharos.flick.FlickBraceMatcher"/>
+            implementationClass="com.lantharos.flick.editor.FlickBraceMatcher"/>
 
         <!-- Formatter - DISABLED to avoid conflicts with EnterHandler -->
         <!--
@@ -65,25 +65,25 @@
 
         <!-- Enter Handler for smart indentation -->
         <enterHandlerDelegate
-            implementation="com.lantharos.flick.FlickEnterHandler"/>
+            implementation="com.lantharos.flick.editor.FlickEnterHandler"/>
 
         <!-- Annotator for errors and warnings -->
         <annotator
             language="Flick"
-            implementationClass="com.lantharos.flick.FlickAnnotator"/>
+            implementationClass="com.lantharos.flick.annotator.FlickAnnotator"/>
 
         <!-- Typed Handler for auto-indentation -->
         <typedHandler
-            implementation="com.lantharos.flick.FlickTypedHandler"/>
+            implementation="com.lantharos.flick.editor.FlickTypedHandler"/>
 
         <!-- Color Settings Page -->
         <colorSettingsPage
-            implementation="com.lantharos.flick.FlickColorSettingsPage"/>
+            implementation="com.lantharos.flick.highlighting.FlickColorSettingsPage"/>
 
         <!-- Run Configuration -->
         <configurationType
-            implementation="com.lantharos.flick.FlickConfigurationType"/>
+            implementation="com.lantharos.flick.run.FlickConfigurationType"/>
         <runConfigurationProducer
-            implementation="com.lantharos.flick.FlickRunConfigurationProducer"/>
+            implementation="com.lantharos.flick.run.FlickRunConfigurationProducer"/>
     </extensions>
 </idea-plugin>

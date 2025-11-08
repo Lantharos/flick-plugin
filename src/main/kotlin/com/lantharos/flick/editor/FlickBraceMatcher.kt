@@ -1,9 +1,10 @@
-package com.lantharos.flick
+package com.lantharos.flick.editor
 
 import com.intellij.lang.BracePair
 import com.intellij.lang.PairedBraceMatcher
 import com.intellij.psi.PsiFile
 import com.intellij.psi.tree.IElementType
+import com.lantharos.flick.parser.FlickTokenTypes
 
 class FlickBraceMatcher : PairedBraceMatcher {
     override fun getPairs() = arrayOf(

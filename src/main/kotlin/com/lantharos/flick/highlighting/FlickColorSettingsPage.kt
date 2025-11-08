@@ -1,10 +1,11 @@
-package com.lantharos.flick
+package com.lantharos.flick.highlighting
 
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.fileTypes.SyntaxHighlighter
 import com.intellij.openapi.options.colors.AttributesDescriptor
 import com.intellij.openapi.options.colors.ColorDescriptor
 import com.intellij.openapi.options.colors.ColorSettingsPage
+import com.lantharos.flick.core.FlickIcons
 import javax.swing.Icon
 
 class FlickColorSettingsPage : ColorSettingsPage {
@@ -83,7 +84,7 @@ class FlickColorSettingsPage : ColorSettingsPage {
     override fun getAttributeDescriptors() = DESCRIPTORS
     override fun getColorDescriptors(): Array<ColorDescriptor> = ColorDescriptor.EMPTY_ARRAY
     override fun getDisplayName() = "Flick"
-    override fun getIcon(): Icon? = FlickIcons.FILE
+    override fun getIcon(): Icon = FlickIcons.FILE
     override fun getHighlighter(): SyntaxHighlighter = FlickSyntaxHighlighter()
     override fun getDemoText() = DEMO_TEXT
     override fun getAdditionalHighlightingTagToDescriptorMap(): Map<String, TextAttributesKey>? = null

@@ -1,4 +1,4 @@
-package com.lantharos.flick
+package com.lantharos.flick.highlighting
 
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.colors.TextAttributesKey
@@ -6,6 +6,8 @@ import com.intellij.openapi.fileTypes.SyntaxHighlighterBase
 import com.intellij.psi.tree.IElementType
 import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.editor.colors.TextAttributesKey.createTextAttributesKey
+import com.lantharos.flick.parser.FlickLexer
+import com.lantharos.flick.parser.FlickTokenTypes
 
 class FlickSyntaxHighlighter : SyntaxHighlighterBase() {
 

@@ -1,4 +1,4 @@
-package com.lantharos.flick
+package com.lantharos.flick.editor
 
 import com.intellij.formatting.*
 import com.intellij.lang.ASTNode

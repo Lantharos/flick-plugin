@@ -1,9 +1,10 @@
-package com.lantharos.flick
+package com.lantharos.flick.editor
 
 import com.intellij.lang.Language
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.codeStyle.lineIndent.LineIndentProvider
+import com.lantharos.flick.core.FlickLanguage
 
 class FlickLineIndentProvider : LineIndentProvider {
     override fun getLineIndent(project: Project, editor: Editor, language: Language?, offset: Int): String? {

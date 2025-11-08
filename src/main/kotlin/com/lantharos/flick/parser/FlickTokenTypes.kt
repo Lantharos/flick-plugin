@@ -1,7 +1,8 @@
-package com.lantharos.flick
+package com.lantharos.flick.parser
 
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.TokenType
+import com.lantharos.flick.core.FlickLanguage
 
 object FlickTokenTypes {
     val WHITE_SPACE = TokenType.WHITE_SPACE

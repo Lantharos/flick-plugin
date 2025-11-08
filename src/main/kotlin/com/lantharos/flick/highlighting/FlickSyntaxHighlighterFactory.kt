@@ -1,4 +1,4 @@
-package com.lantharos.flick
+package com.lantharos.flick.highlighting
 
 import com.intellij.openapi.fileTypes.SyntaxHighlighter
 import com.intellij.openapi.fileTypes.SyntaxHighlighterFactory

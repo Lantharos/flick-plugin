@@ -1,4 +1,4 @@
-package com.lantharos.flick
+package com.lantharos.flick.parser
 
 import com.intellij.lexer.Lexer
 import com.intellij.lexer.LexerBase

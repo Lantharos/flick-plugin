@@ -1,4 +1,4 @@
-package com.lantharos.flick
+package com.lantharos.flick.core
 
 import com.intellij.lang.Language
 

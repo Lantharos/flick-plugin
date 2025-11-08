@@ -1,4 +1,4 @@
-package com.lantharos.flick
+package com.lantharos.flick.parser
 
 import com.intellij.lang.ASTNode
 import com.intellij.lang.ParserDefinition
@@ -10,6 +10,8 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.tree.IFileElementType
 import com.intellij.psi.tree.TokenSet
+import com.lantharos.flick.core.FlickLanguage
+import com.lantharos.flick.core.FlickFile
 
 class FlickParserDefinition : ParserDefinition {
     companion object {

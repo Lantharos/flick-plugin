@@ -1,4 +1,4 @@
-package com.lantharos.flick
+package com.lantharos.flick.run
 
 import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.execution.actions.LazyRunConfigurationProducer

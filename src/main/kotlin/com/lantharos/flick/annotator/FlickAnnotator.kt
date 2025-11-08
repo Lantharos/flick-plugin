@@ -1,10 +1,11 @@
-package com.lantharos.flick
+package com.lantharos.flick.annotator
 
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.psi.PsiElement
+import com.lantharos.flick.core.FlickFileType
 
 // Built-in functions that should be highlighted
 val BUILTIN_FUNCTIONS: Set<String> = setOf(
@@ -384,16 +385,11 @@ class FlickAnnotator : Annotator {
         }
 
         // Uninitialized variable declaration: free/lock type IDENTIFIER (no =)
-        val varDeclUninitPattern = Regex("""(?:free|lock)\s+(?:num|literal|[A-Z][a-zA-Z0-9_]*)\s+${Regex.escape(text)}\b(?!\s*=)""")
+        // This handles cases like: free literal name, lock num count, etc.
+        val varDeclUninitPattern = Regex("""(?:free|lock)\s+(?:num|literal|[A-Z][a-zA-Z0-9_]*)\s+${Regex.escape(text)}\s*$""")
         if (varDeclUninitPattern.containsMatchIn(trimmedLine)) {
-            val match = varDeclUninitPattern.find(trimmedLine)
-            if (match != null) {
-                val matchStart = lineStart + indentLength + match.range.first
-                val matchEnd = lineStart + indentLength + match.range.last
-                if (offset in matchStart..matchEnd) {
-                    return
-                }
-            }
+            // This is the declaration line, skip validation
+            return
         }
 
         // Task declaration: task IDENTIFIER with/=>
@@ -589,9 +585,12 @@ class FlickAnnotator : Annotator {
         }
 
         // Check for free/lock variable declarations BEFORE this offset (with or without initialization)
-        // Matches: free varname = ... OR free type varname (uninitialized)
-        val varPatternInit = Regex("""(?:free|lock)\s+(?:num\s+|literal\s+|[A-Z][a-zA-Z0-9_]*\s+)?${Regex.escape(varName)}\s*=""")
-        val varPatternUninit = Regex("""(?:free|lock)\s+(?:num|literal|[A-Z][a-zA-Z0-9_]*)\s+${Regex.escape(varName)}\b""")
+        // Matches:
+        // 1. free varname = ... (initialized, no type)
+        // 2. free type varname = ... (initialized, with type)
+        // 3. free type varname (uninitialized, with type - like "free literal name")
+        val varPatternInit = Regex("""(?:free|lock)\s+(?:(?:num|literal|[A-Z][a-zA-Z0-9_]*)\s+)?${Regex.escape(varName)}\s*=""")
+        val varPatternUninit = Regex("""(?:free|lock)\s+(?:num|literal|[A-Z][a-zA-Z0-9_]*)\s+${Regex.escape(varName)}\s*$""", RegexOption.MULTILINE)
 
         if (varPatternInit.containsMatchIn(cleanText) || varPatternUninit.containsMatchIn(cleanText)) {
             return true
