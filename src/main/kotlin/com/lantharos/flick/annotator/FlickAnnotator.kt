@@ -6,6 +6,7 @@ import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.psi.PsiElement
 import com.lantharos.flick.core.FlickFileType
+import com.lantharos.flick.core.NpmPackageService
 
 // Built-in functions that should be highlighted
 val BUILTIN_FUNCTIONS: Set<String> = setOf(
@@ -46,20 +47,36 @@ class FlickAnnotator : Annotator {
         checkPluginSpecificKeyword(text, declaredPlugins, element, holder)
         checkRouteOnlyKeywords(text, element, holder)
 
+        // Check if this keyword appears after / or . (method call context)
+        val offset = element.textRange.startOffset
+        val textBefore = if (offset > 0) fileText.substring(0, offset) else ""
+        val charBeforeIdentifier = textBefore.trimEnd().lastOrNull()
+        val isMethodCall = charBeforeIdentifier == '/' || charBeforeIdentifier == '.'
+
         // Skip all keywords immediately - they're already highlighted by the lexer
+        // UNLESS they're being used as method names (after / or .)
         val allKeywords = setOf(
             "free", "lock", "task", "route", "assume", "maybe", "otherwise", "each", "march",
             "group", "blueprint", "do", "end", "select", "suppose", "when", "and", "or", "not",
             "yes", "no", "declare", "import", "from", "with", "in", "to", "for", "while", "use",
-            "give", "respond", "num", "literal", "print", "ask"
+            "give", "respond", "num", "literal", "print", "ask", "as"
         )
-        if (text in allKeywords) {
+        if (text in allKeywords && !isMethodCall) {
             // For specific keywords, do additional validation
             when (text) {
                 "end" -> checkEndStatement(element, holder)
                 "task", "route", "assume", "maybe", "otherwise", "each", "march", "group",
                 "select", "suppose", "do", "when" -> checkBlockStart(element, holder)
             }
+            return
+        }
+
+        // If it's a method call using a keyword name, highlight it as a method call
+        if (text in allKeywords && isMethodCall) {
+            holder.newAnnotation(HighlightSeverity.INFORMATION, "")
+                .range(element)
+                .textAttributes(DefaultLanguageHighlighterColors.FUNCTION_CALL)
+                .create()
             return
         }
 
@@ -110,12 +127,12 @@ class FlickAnnotator : Annotator {
         val offset = element.textRange.startOffset
 
         // Get text before this end statement
-        val textBefore = fileText.substring(0, offset)
+        val textBefore = fileText.take(offset)
 
         // Remove comments to avoid counting keywords in comments
         val textWithoutComments = textBefore.lines().joinToString("\n") { line ->
             val commentIndex = line.indexOf('#')
-            if (commentIndex >= 0) line.substring(0, commentIndex) else line
+            if (commentIndex >= 0) line.take(commentIndex) else line
         }
 
         // Track block depth
@@ -422,6 +439,45 @@ class FlickAnnotator : Annotator {
             return
         }
 
+        // Skip if in import statement - imported symbols are valid
+        // Check if current line is an import or if we're within an import statement
+        if (trimmedLine.startsWith("import") || currentLine.contains("import") && currentLine.contains("from")) {
+            return
+        }
+
+        // Skip if this is an object key (identifier before : in an object literal)
+        // Example: { email: username, password: password }
+        val charAfterIdWithSpace = fileText.substring(offset + text.length).trim().firstOrNull()
+        if (charAfterIdWithSpace == ':' && textBefore.trimEnd().lastOrNull() in setOf('{', ',')) {
+            return
+        }
+
+        // Skip if in multi-variable declaration with 'as' keyword
+        // Example: free data, error = ... or free data as profileData, error as profileError = ...
+        // Need to check if this identifier is part of the declaration (either before 'as' or after 'as')
+        val multiVarDeclPattern = Regex("""(?:free|lock)\s+(.+?)=""")
+        val multiVarMatch = multiVarDeclPattern.find(trimmedLine)
+        if (multiVarMatch != null) {
+            val varsText = multiVarMatch.groupValues[1]
+            // Check if our identifier appears in this declaration
+            val varNames = mutableListOf<String>()
+            varsText.split(",").forEach { varDecl ->
+                val trimmed = varDecl.trim()
+                if (trimmed.contains(" as ")) {
+                    val parts = trimmed.split(Regex("\\s+as\\s+"))
+                    if (parts.size == 2) {
+                        varNames.add(parts[0].trim()) // original name
+                        varNames.add(parts[1].trim()) // alias
+                    }
+                } else {
+                    varNames.add(trimmed)
+                }
+            }
+            if (text in varNames) {
+                return // This identifier is being declared on this line
+            }
+        }
+
         // Check if this identifier comes after / or . (method call like obj/method or obj.method)
         if (textBefore.trimEnd().endsWith("/") || textBefore.trimEnd().endsWith(".")) {
             // Validate the method exists on the object
@@ -531,6 +587,10 @@ class FlickAnnotator : Annotator {
         val taskPattern = Regex("""task\s+${Regex.escape(text)}\b""")
         val functionExists = taskPattern.containsMatchIn(fileText)
 
+        // Check if it's an imported symbol
+        val imports = NpmPackageService.getImportsFromFile(fileText)
+        val isImported = text in imports.keys
+
         // Check if variable exists in scope
         val variableExists = isVariableInScope(text, offset, fileText)
 
@@ -542,9 +602,9 @@ class FlickAnnotator : Annotator {
                       blueprintPattern.containsMatchIn(fileText.take(offset)))
 
         if (isFunctionCall) {
-            // Looks like a function call - must be a defined function (not just a variable)
-            if (!functionExists) {
-                // Definitely error - this looks like a function call but the function doesn't exist
+            // Looks like a function call - must be a defined function or imported symbol
+            if (!functionExists && !isImported) {
+                // Definitely error - this looks like a function call but the function doesn't exist and it's not imported
                 holder.newAnnotation(
                     HighlightSeverity.ERROR,
                     "Function '$text' is not defined"
@@ -553,7 +613,7 @@ class FlickAnnotator : Annotator {
                     .create()
                 return // Don't check as variable
             } else {
-                // Function exists - highlight it as a function call
+                // Function exists or is imported - highlight it as a function call
                 holder.newAnnotation(HighlightSeverity.INFORMATION, "")
                     .range(element)
                     .textAttributes(DefaultLanguageHighlighterColors.FUNCTION_CALL)
@@ -562,7 +622,7 @@ class FlickAnnotator : Annotator {
             }
         } else {
             // Not a function call - must be a variable or class
-            if (!variableExists && !isClass && !functionExists) {
+            if (!variableExists && !isClass && !functionExists && !isImported) {
                 holder.newAnnotation(
                     HighlightSeverity.ERROR,
                     "Variable '$text' is not defined"
@@ -591,6 +651,43 @@ class FlickAnnotator : Annotator {
         val varPatternUninit = Regex("""(?:free|lock)\s+(?:num|literal|[A-Z][a-zA-Z0-9_]*)\s+${Regex.escape(varName)}\s*$""", RegexOption.MULTILINE)
 
         if (varPatternInit.containsMatchIn(cleanText) || varPatternUninit.containsMatchIn(cleanText)) {
+            return true
+        }
+
+        // Check for multi-variable declarations
+        // Example: free data, error = ... or free data as profileData, error as profileError = ...
+        // Match the original name before 'as' OR the alias after 'as'
+        val multiVarPattern = Regex("""(?:free|lock)\s+([^=]+)=""")
+        multiVarPattern.findAll(cleanText).forEach { match ->
+            val varsText = match.groupValues[1].trim()
+            // Split by comma and check each variable
+            varsText.split(",").forEach { varDecl ->
+                val trimmed = varDecl.trim()
+                // Check for "originalName as aliasName" pattern
+                if (trimmed.contains(" as ")) {
+                    val parts = trimmed.split(Regex("\\s+as\\s+"))
+                    if (parts.size == 2) {
+                        val originalName = parts[0].trim()
+                        val aliasName = parts[1].trim()
+                        // Check if this matches our search (varName)
+                        if (originalName == varName || aliasName == varName) {
+                            return true
+                        }
+                    }
+                } else {
+                    // Just a simple variable name - no alias
+                    if (trimmed == varName) {
+                        return true
+                    }
+                }
+            }
+        }
+
+        // Check for imported symbols from npm packages
+        // Example: import { createClient } from '@supabase/supabase-js'
+        // Note: We check the entire file, not just textBefore, since imports are usually at the top
+        val imports = NpmPackageService.getImportsFromFile(fileText)
+        if (varName in imports.keys) {
             return true
         }
 

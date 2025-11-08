@@ -114,7 +114,7 @@ class FlickLexer : LexerBase() {
             "march", "from", "to", "select", "when", "suppose", "end",
 
             // Declaration keywords
-            "group", "task", "blueprint", "do", "for", "declare", "use", "import",
+            "group", "task", "blueprint", "do", "for", "declare", "use", "import", "as",
 
             // Web keywords
             "route", "respond",

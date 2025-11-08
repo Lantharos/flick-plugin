@@ -4,6 +4,7 @@ import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.util.ProcessingContext
+import com.lantharos.flick.core.NpmPackageService
 
 class FlickCompletionContributor : CompletionContributor() {
     init {
@@ -27,7 +28,7 @@ class FlickCompletionContributor : CompletionContributor() {
                         "assume", "maybe", "otherwise", "each", "in", "march", "from", "to",
                         "select", "when", "suppose", "print", "declare", "use", "import",
                         "route", "respond", "with", "end", "yes", "no", "num", "literal",
-                        "ask", "and", "give"
+                        "ask", "and", "give", "as"
                     )
 
                     keywords.forEach { keyword ->
@@ -58,6 +59,47 @@ class FlickCompletionContributor : CompletionContributor() {
                             LookupElementBuilder.create(varName)
                                 .withTypeText("variable")
                                 .withIcon(com.intellij.icons.AllIcons.Nodes.Variable)
+                        )
+                    }
+
+                    // Find multi-variable declarations (free data, error = ... or with 'as')
+                    val multiVarPattern = Regex("""(?:free|lock)\s+([^=]+)=""")
+                    multiVarPattern.findAll(textBefore).forEach { match ->
+                        val varsText = match.groupValues[1]
+                        varsText.split(",").forEach { varDecl ->
+                            val trimmed = varDecl.trim()
+                            if (trimmed.contains(" as ")) {
+                                val parts = trimmed.split(Regex("\\s+as\\s+"))
+                                if (parts.size == 2) {
+                                    // Add both original and alias
+                                    result.addElement(
+                                        LookupElementBuilder.create(parts[0].trim())
+                                            .withTypeText("variable")
+                                            .withIcon(com.intellij.icons.AllIcons.Nodes.Variable)
+                                    )
+                                    result.addElement(
+                                        LookupElementBuilder.create(parts[1].trim())
+                                            .withTypeText("variable (alias)")
+                                            .withIcon(com.intellij.icons.AllIcons.Nodes.Variable)
+                                    )
+                                }
+                            } else if (trimmed.isNotEmpty()) {
+                                result.addElement(
+                                    LookupElementBuilder.create(trimmed)
+                                        .withTypeText("variable")
+                                        .withIcon(com.intellij.icons.AllIcons.Nodes.Variable)
+                                )
+                            }
+                        }
+                    }
+
+                    // Find imported symbols from npm packages
+                    val imports = NpmPackageService.getImportsFromFile(fileText)
+                    imports.forEach { (symbol, packageName) ->
+                        result.addElement(
+                            LookupElementBuilder.create(symbol)
+                                .withTypeText("imported from $packageName")
+                                .withIcon(com.intellij.icons.AllIcons.Nodes.ModuleGroup)
                         )
                     }
 
