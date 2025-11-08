@@ -16,6 +16,11 @@ class FlickCompletionContributor : CompletionContributor() {
                     context: ProcessingContext,
                     result: CompletionResultSet
                 ) {
+                    val position = parameters.position
+                    val file = position.containingFile
+                    val fileText = file.text
+                    val offset = parameters.offset
+
                     // Keywords
                     val keywords = listOf(
                         "free", "lock", "group", "task", "blueprint", "do", "for",
@@ -33,6 +38,62 @@ class FlickCompletionContributor : CompletionContributor() {
                         )
                     }
 
+                    // Find all defined functions in the file
+                    val functionPattern = Regex("""task\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:with|=>)""")
+                    functionPattern.findAll(fileText).forEach { match ->
+                        val funcName = match.groupValues[1]
+                        result.addElement(
+                            LookupElementBuilder.create(funcName)
+                                .withTypeText("function")
+                                .withIcon(com.intellij.icons.AllIcons.Nodes.Function)
+                        )
+                    }
+
+                    // Find all variables in scope
+                    val textBefore = fileText.substring(0, offset)
+                    val varPattern = Regex("""(?:free|lock)\s+(?:num\s+|literal\s+|[A-Z][a-zA-Z0-9_]*\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*=""")
+                    varPattern.findAll(textBefore).forEach { match ->
+                        val varName = match.groupValues[1]
+                        result.addElement(
+                            LookupElementBuilder.create(varName)
+                                .withTypeText("variable")
+                                .withIcon(com.intellij.icons.AllIcons.Nodes.Variable)
+                        )
+                    }
+
+                    // Find parameters in current function scope
+                    val paramPattern = Regex("""\bwith\s+[^=]*\b(?:num|literal|[A-Z][a-zA-Z0-9_]*)\s*\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\)""")
+                    paramPattern.findAll(textBefore).forEach { match ->
+                        val paramName = match.groupValues[1]
+                        result.addElement(
+                            LookupElementBuilder.create(paramName)
+                                .withTypeText("parameter")
+                                .withIcon(com.intellij.icons.AllIcons.Nodes.Parameter)
+                        )
+                    }
+
+                    // Find loop variables in scope
+                    val loopPattern = Regex("""\b(?:each|march)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+(?:in|from)\b""")
+                    loopPattern.findAll(textBefore).forEach { match ->
+                        val loopVar = match.groupValues[1]
+                        result.addElement(
+                            LookupElementBuilder.create(loopVar)
+                                .withTypeText("loop variable")
+                                .withIcon(com.intellij.icons.AllIcons.Nodes.Variable)
+                        )
+                    }
+
+                    // Find all groups/classes
+                    val groupPattern = Regex("""(?:group|blueprint)\s+([A-Z][a-zA-Z0-9_]*)""")
+                    groupPattern.findAll(textBefore).forEach { match ->
+                        val className = match.groupValues[1]
+                        result.addElement(
+                            LookupElementBuilder.create(className)
+                                .withTypeText("class")
+                                .withIcon(com.intellij.icons.AllIcons.Nodes.Class)
+                        )
+                    }
+
                     // Built-in plugins
                     val plugins = listOf("web", "files", "time", "random")
                     plugins.forEach { plugin ->
@@ -42,91 +103,6 @@ class FlickCompletionContributor : CompletionContributor() {
                                 .withTypeText("plugin")
                         )
                     }
-
-                    // Common snippets
-                    result.addElement(
-                        LookupElementBuilder.create("task")
-                            .withInsertHandler { context, _ ->
-                                val doc = context.document
-                                val offset = context.tailOffset
-                                doc.insertString(offset, " taskName =>\n    \nend")
-                                context.editor.caretModel.moveToOffset(offset + 6)
-                            }
-                            .withPresentableText("task (snippet)")
-                            .withTypeText("snippet")
-                    )
-
-                    result.addElement(
-                        LookupElementBuilder.create("group")
-                            .withInsertHandler { context, _ ->
-                                val doc = context.document
-                                val offset = context.tailOffset
-                                doc.insertString(offset, " GroupName {\n    \n}")
-                                context.editor.caretModel.moveToOffset(offset + 7)
-                            }
-                            .withPresentableText("group (snippet)")
-                            .withTypeText("snippet")
-                    )
-
-                    result.addElement(
-                        LookupElementBuilder.create("assume")
-                            .withInsertHandler { context, _ ->
-                                val doc = context.document
-                                val offset = context.tailOffset
-                                doc.insertString(offset, " condition =>\n    \nend")
-                                context.editor.caretModel.moveToOffset(offset + 1)
-                            }
-                            .withPresentableText("assume (snippet)")
-                            .withTypeText("snippet")
-                    )
-
-                    result.addElement(
-                        LookupElementBuilder.create("each")
-                            .withInsertHandler { context, _ ->
-                                val doc = context.document
-                                val offset = context.tailOffset
-                                doc.insertString(offset, " item in items =>\n    \nend")
-                                context.editor.caretModel.moveToOffset(offset + 1)
-                            }
-                            .withPresentableText("each (snippet)")
-                            .withTypeText("snippet")
-                    )
-
-                    result.addElement(
-                        LookupElementBuilder.create("march")
-                            .withInsertHandler { context, _ ->
-                                val doc = context.document
-                                val offset = context.tailOffset
-                                doc.insertString(offset, " i from 1 to 10 =>\n    \nend")
-                                context.editor.caretModel.moveToOffset(offset + 1)
-                            }
-                            .withPresentableText("march (snippet)")
-                            .withTypeText("snippet")
-                    )
-
-                    result.addElement(
-                        LookupElementBuilder.create("give")
-                            .withInsertHandler { context, _ ->
-                                val doc = context.document
-                                val offset = context.tailOffset
-                                doc.insertString(offset, " ")
-                                context.editor.caretModel.moveToOffset(offset + 1)
-                            }
-                            .withPresentableText("give (return)")
-                            .withTypeText("snippet")
-                    )
-
-                    result.addElement(
-                        LookupElementBuilder.create("assume")
-                            .withInsertHandler { context, _ ->
-                                val doc = context.document
-                                val offset = context.tailOffset
-                                doc.insertString(offset, " condition => value, otherwise => alternate")
-                                context.editor.caretModel.moveToOffset(offset + 1)
-                            }
-                            .withPresentableText("assume (ternary)")
-                            .withTypeText("snippet")
-                    )
 
                     // Built-in functions
                     val builtins = listOf(
@@ -138,6 +114,43 @@ class FlickCompletionContributor : CompletionContributor() {
                                 .withTypeText("built-in")
                         )
                     }
+
+                    // Common snippets
+                    result.addElement(
+                        LookupElementBuilder.create("task")
+                            .withInsertHandler { ctx, _ ->
+                                val doc = ctx.document
+                                val offs = ctx.tailOffset
+                                doc.insertString(offs, " taskName =>\n    \nend")
+                                ctx.editor.caretModel.moveToOffset(offs + 6)
+                            }
+                            .withPresentableText("task (snippet)")
+                            .withTypeText("snippet")
+                    )
+
+                    result.addElement(
+                        LookupElementBuilder.create("group")
+                            .withInsertHandler { ctx, _ ->
+                                val doc = ctx.document
+                                val offs = ctx.tailOffset
+                                doc.insertString(offs, " GroupName {\n    \n}")
+                                ctx.editor.caretModel.moveToOffset(offs + 7)
+                            }
+                            .withPresentableText("group (snippet)")
+                            .withTypeText("snippet")
+                    )
+
+                    result.addElement(
+                        LookupElementBuilder.create("assume")
+                            .withInsertHandler { ctx, _ ->
+                                val doc = ctx.document
+                                val offs = ctx.tailOffset
+                                doc.insertString(offs, " condition =>\n    \nend")
+                                ctx.editor.caretModel.moveToOffset(offs + 1)
+                            }
+                            .withPresentableText("assume (snippet)")
+                            .withTypeText("snippet")
+                    )
                 }
             }
         )

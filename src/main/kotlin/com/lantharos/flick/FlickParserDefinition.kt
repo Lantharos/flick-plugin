@@ -10,7 +10,6 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.tree.IFileElementType
 import com.intellij.psi.tree.TokenSet
-import com.lantharos.flick.psi.FlickTypes
 
 class FlickParserDefinition : ParserDefinition {
     companion object {
@@ -21,7 +20,7 @@ class FlickParserDefinition : ParserDefinition {
 
     override fun createLexer(project: Project?): Lexer = FlickLexer()
 
-    override fun createParser(project: Project?): PsiParser = com.lantharos.flick.parser.FlickParser()
+    override fun createParser(project: Project?): PsiParser = FlickParser()
 
     override fun getFileNodeType() = FILE
 
@@ -29,7 +28,7 @@ class FlickParserDefinition : ParserDefinition {
 
     override fun getStringLiteralElements() = STRINGS
 
-    override fun createElement(node: ASTNode?): PsiElement = FlickTypes.Factory.createElement(node!!)
+    override fun createElement(node: ASTNode?): PsiElement = FlickPsiElement(node!!)
 
     override fun createFile(viewProvider: FileViewProvider): PsiFile = FlickFile(viewProvider)
 }
