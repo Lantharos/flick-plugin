@@ -1,0 +1,43 @@
+# Classes and Objects in Flick
+
+group Player {
+    free name
+    free score := 0
+    free level := 1
+    
+    task init with literal(playerName) =>
+        name := playerName
+        print "Player " and name and " created!"
+    end
+    
+    task addScore with num(points) =>
+        score := score + points
+        print name and " scored " and points and " points!"
+        
+        # Level up every 100 points
+        assume score >= level * 100 =>
+            level := level + 1
+            print name and " leveled up to level " and level and "!"
+        end
+    end
+    
+    task getInfo =>
+        print "Player: " and name
+        print "  Score: " and score
+        print "  Level: " and level
+    end
+}
+
+# Create and use objects
+task main =>
+    free player1 := Player
+    player1/init "Alice"
+    
+    player1/addScore 50
+    player1/addScore 30
+    player1/addScore 25
+    
+    player1/getInfo
+end
+
+main

@@ -1,0 +1,29 @@
+# Web Server Example
+# Demonstrates Flick's web development capabilities
+
+declare web @3000
+
+route GET "/" =>
+    respond "Welcome to Flick Web Server!"
+end
+
+route GET "/hello" =>
+    respond "Hello from Flick!"
+end
+
+route GET "/api/data" =>
+    lock data := {
+        message: "This is JSON data",
+        timestamp: 1234567890,
+        active: yes
+    }
+    respond json=data
+end
+
+route POST "/api/echo" =>
+    # Echo back the request
+    respond "Request received"
+end
+
+print "Server started on port 3000"
+print "Visit http://localhost:3000"

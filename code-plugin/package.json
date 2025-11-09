@@ -1,0 +1,117 @@
+{
+  "name": "flick",
+  "displayName": "Flick Language Support",
+  "description": "Official Flick Language Support - Syntax highlighting, code execution, and language features",
+  "version": "0.0.1",
+  "publisher": "flick",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/flick-lang/vscode-flick"
+  },
+  "engines": {
+    "vscode": "^1.105.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "flick",
+    "language",
+    "syntax",
+    "highlighting"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "iconThemes": [
+      { 
+        "id": "flick-icon-theme",
+        "label": "Flick File Icons",
+        "path": "./file-icons/flick-icon-theme.json"
+      }
+    ],
+    "languages": [{
+      "id": "flick",
+      "aliases": ["Flick", "flick"],
+      "extensions": [".fk", ".flick"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "flick",
+      "scopeName": "source.flick",
+      "path": "./syntaxes/flick.tmLanguage.json"
+    }],
+    "commands": [
+      {
+        "command": "flick.runFile",
+        "title": "Run Flick File",
+        "category": "Flick"
+      },
+      {
+        "command": "flick.runSelection",
+        "title": "Run Flick Selection",
+        "category": "Flick"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "flick.runFile",
+        "key": "ctrl+shift+f",
+        "mac": "cmd+shift+f",
+        "when": "editorLangId == flick"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "editorLangId == flick",
+          "command": "flick.runFile",
+          "group": "navigation"
+        },
+        {
+          "when": "editorLangId == flick && editorHasSelection",
+          "command": "flick.runSelection",
+          "group": "navigation"
+        }
+      ]
+    },
+    "snippets": [
+      {
+        "language": "flick",
+        "path": "./snippets/flick.json"
+      }
+    ],
+    "configuration": {
+      "title": "Flick",
+      "properties": {
+        "flick.interpreterPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the Flick interpreter executable. If empty, uses bundled interpreter."
+        },
+        "flick.enableDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable real-time syntax checking and diagnostics."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.x",
+    "@types/vscode": "^1.105.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {}
+}

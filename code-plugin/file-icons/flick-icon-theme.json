@@ -1,0 +1,10 @@
+{
+  "iconDefinitions": {
+    "flick-icon": {
+      "iconPath": "./flick-icon.svg"
+    }
+  },
+  "fileExtensions": {
+    "fk": "flick-icon"
+  }
+}

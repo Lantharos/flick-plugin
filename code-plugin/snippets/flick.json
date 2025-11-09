@@ -1,0 +1,131 @@
+{
+  "Task Declaration": {
+    "prefix": "task",
+    "body": [
+      "task ${1:functionName} with ${2:num(param)} =>",
+      "\t${3:# function body}",
+      "end"
+    ],
+    "description": "Create a task (function) declaration"
+  },
+  "Free Variable": {
+    "prefix": "free",
+    "body": "free ${1:varName} := ${2:value}",
+    "description": "Declare a mutable variable"
+  },
+  "Lock Variable": {
+    "prefix": "lock",
+    "body": "lock ${1:varName} := ${2:value}",
+    "description": "Declare an immutable variable"
+  },
+  "If Statement": {
+    "prefix": "assume",
+    "body": [
+      "assume ${1:condition} =>",
+      "\t${2:# if body}",
+      "end"
+    ],
+    "description": "Create an if statement"
+  },
+  "If-Else Statement": {
+    "prefix": "assumeelse",
+    "body": [
+      "assume ${1:condition} =>",
+      "\t${2:# if body}",
+      "otherwise =>",
+      "\t${3:# else body}",
+      "end"
+    ],
+    "description": "Create an if-else statement"
+  },
+  "Each Loop": {
+    "prefix": "each",
+    "body": [
+      "each ${1:item} in ${2:iterable} =>",
+      "\t${3:# loop body}",
+      "end"
+    ],
+    "description": "Create a for-each loop"
+  },
+  "March Loop": {
+    "prefix": "march",
+    "body": [
+      "march ${1:i} from ${2:0} to ${3:10} =>",
+      "\t${4:# loop body}",
+      "end"
+    ],
+    "description": "Create a range-based for loop"
+  },
+  "Group Declaration": {
+    "prefix": "group",
+    "body": [
+      "group ${1:ClassName} {",
+      "\t${2:# fields and methods}",
+      "}"
+    ],
+    "description": "Create a group (class) declaration"
+  },
+  "Blueprint Declaration": {
+    "prefix": "blueprint",
+    "body": [
+      "blueprint ${1:InterfaceName} {",
+      "\ttask ${2:methodName} with ${3:num(param)}",
+      "}"
+    ],
+    "description": "Create a blueprint (interface) declaration"
+  },
+  "Print Statement": {
+    "prefix": "print",
+    "body": "print ${1:value}",
+    "description": "Print a value to console"
+  },
+  "Ask Expression": {
+    "prefix": "ask",
+    "body": "ask \"${1:prompt}\"",
+    "description": "Prompt for user input"
+  },
+  "Route Declaration": {
+    "prefix": "route",
+    "body": [
+      "route ${1:GET} \"${2:/path}\" =>",
+      "\t${3:# route handler}",
+      "end"
+    ],
+    "description": "Create a route handler (requires declare web)"
+  },
+  "Respond Statement": {
+    "prefix": "respond",
+    "body": "respond ${1:content}",
+    "description": "Send HTTP response (requires declare web)"
+  },
+  "Select Statement": {
+    "prefix": "select",
+    "body": [
+      "select ${1:value} =>",
+      "\twhen \"${2:case}\" =>",
+      "\t\t${3:# case body}",
+      "end"
+    ],
+    "description": "Create a select (switch) statement"
+  },
+  "Import Statement": {
+    "prefix": "import",
+    "body": "import ${1:name} from \"${2:module}\"",
+    "description": "Import from a module"
+  },
+  "Declare Plugin": {
+    "prefix": "declare",
+    "body": "declare ${1:web}",
+    "description": "Declare a plugin"
+  },
+  "Return Statement": {
+    "prefix": "give",
+    "body": "give ${1:value}",
+    "description": "Return a value from a task"
+  },
+  "Ternary Expression": {
+    "prefix": "ternary",
+    "body": "assume ${1:condition} => ${2:trueValue}, otherwise => ${3:falseValue}",
+    "description": "Create a ternary (inline if) expression"
+  }
+}

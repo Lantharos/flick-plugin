@@ -1,0 +1,50 @@
+# Hello World in Flick
+# This is a simple example demonstrating basic Flick syntax
+
+task greet with literal(name) =>
+    print "Hello, " and name and "!"
+end
+
+task calculateSum with num(a), num(b) =>
+    give a + b
+end
+
+# Main program
+task main =>
+    print "Welcome to Flick!"
+    
+    # Variables
+    free name := "World"
+    lock pi := 3.14159
+    
+    # Call function
+    greet name
+    
+    # Conditional
+    free x := 10
+    assume x > 5 =>
+        print "x is greater than 5"
+    otherwise =>
+        print "x is 5 or less"
+    end
+    
+    # Loop
+    print "Counting from 1 to 5:"
+    march i from 1 to 5 =>
+        print "  " and i
+    end
+    
+    # Array iteration
+    lock numbers := [1, 2, 3, 4, 5]
+    print "Array elements:"
+    each num in numbers =>
+        print "  " and num
+    end
+    
+    # Calculate
+    lock result := calculateSum 10, 20
+    print "Sum of 10 and 20 is: " and result
+end
+
+# Run the main task
+main

@@ -1,0 +1,35 @@
+{
+    "comments": {
+        "lineComment": "#"
+    },
+    "brackets": [
+        ["{", "}"],
+        ["[", "]"],
+        ["(", ")"]
+    ],
+    "autoClosingPairs": [
+        ["{", "}"],
+        ["[", "]"],
+        ["(", ")"],
+        ["\"", "\""],
+        ["'", "'"]
+    ],
+    "surroundingPairs": [
+        ["{", "}"],
+        ["[", "]"],
+        ["(", ")"],
+        ["\"", "\""],
+        ["'", "'"]
+    ],
+    "folding": {
+        "markers": {
+            "start": "^\\s*(group|blueprint|task|assume|each|march|select|route|do)\\b",
+            "end": "^\\s*end\\b"
+        }
+    },
+    "wordPattern": "(-?\\d*\\.\\d\\w*)|([^\\`\\~\\!\\@\\#\\%\\^\\&\\*\\(\\)\\-\\=\\+\\[\\{\\]\\}\\\\\\|\\;\\:\\'\\\"\\,\\.\\<\\>\\/\\?\\s]+)",
+    "indentationRules": {
+        "increaseIndentPattern": "^\\s*(group|blueprint|task|assume|maybe|otherwise|each|march|select|when|suppose|route|do).*=>\\s*$",
+        "decreaseIndentPattern": "^\\s*(end|maybe|otherwise|when)\\b"
+    }
+}
