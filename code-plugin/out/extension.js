@@ -35,161 +35,107 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
-const vscode = __importStar(require("vscode"));
 const path = __importStar(require("path"));
-const fs = __importStar(require("fs"));
-const child_process_1 = require("child_process");
-const diagnostics_1 = require("./diagnostics");
-const languageServer_1 = require("./languageServer");
-let diagnosticsProvider;
-let languageServer;
+const vscode_1 = require("vscode");
+const node_1 = require("vscode-languageclient/node");
+let client;
 function activate(context) {
     console.log('Flick extension is now active!');
-    // Initialize language server first
-    languageServer = new languageServer_1.FlickLanguageServer();
-    // Initialize diagnostics provider with language server
-    diagnosticsProvider = new diagnostics_1.FlickDiagnostics(languageServer);
-    context.subscriptions.push(diagnosticsProvider);
-    // Register completion provider
-    const completionProvider = vscode.languages.registerCompletionItemProvider('flick', {
-        provideCompletionItems(document, position) {
-            return languageServer?.provideCompletionItems(document, position);
+    // The server is implemented in node
+    const serverModule = context.asAbsolutePath(path.join('out', 'languageServer.js'));
+    // If the extension is launched in debug mode then the debug server options are used
+    // Otherwise the run options are used
+    const serverOptions = {
+        run: { module: serverModule, transport: node_1.TransportKind.ipc },
+        debug: {
+            module: serverModule,
+            transport: node_1.TransportKind.ipc,
         }
-    }, '/', '.', ' ' // Trigger characters for member access and general typing
-    );
-    context.subscriptions.push(completionProvider);
-    // Register hover provider
-    context.subscriptions.push(vscode.languages.registerHoverProvider('flick', {
-        provideHover(document, position) {
-            return languageServer?.provideHover(document, position);
+    };
+    // Options to control the language client
+    const clientOptions = {
+        // Register the server for flick documents
+        documentSelector: [{ scheme: 'file', language: 'flick' }],
+        synchronize: {
+            // Notify the server about file changes to '.clientrc files contained in the workspace
+            fileEvents: vscode_1.workspace.createFileSystemWatcher('**/.clientrc')
         }
-    }));
-    // Register run file command
-    const runFileCommand = vscode.commands.registerCommand('flick.runFile', async () => {
-        const editor = vscode.window.activeTextEditor;
+    };
+    // Create the language client and start the client.
+    client = new node_1.LanguageClient('flickLanguageServer', 'Flick Language Server', serverOptions, clientOptions);
+    // Start the client. This will also launch the server
+    client.start();
+    context.subscriptions.push(vscode_1.commands.registerCommand('flick.runFile', async () => {
+        const editor = vscode_1.window.activeTextEditor;
         if (!editor) {
-            vscode.window.showErrorMessage('No active editor');
+            vscode_1.window.showErrorMessage('No active editor to run.');
             return;
         }
-        if (editor.document.languageId !== 'flick') {
-            vscode.window.showErrorMessage('Current file is not a Flick file');
+        const document = editor.document;
+        if (document.languageId !== 'flick') {
+            vscode_1.window.showErrorMessage('The active file is not a Flick file.');
             return;
         }
-        // Save the file first
-        await editor.document.save();
-        runFlickFile(editor.document.uri.fsPath, context);
-    });
-    // Register run selection command
-    const runSelectionCommand = vscode.commands.registerCommand('flick.runSelection', async () => {
-        const editor = vscode.window.activeTextEditor;
+        if (document.isDirty) {
+            await document.save();
+        }
+        runFlickFile(document);
+    }));
+    context.subscriptions.push(vscode_1.commands.registerCommand('flick.runSelection', async () => {
+        const editor = vscode_1.window.activeTextEditor;
         if (!editor) {
-            vscode.window.showErrorMessage('No active editor');
+            vscode_1.window.showErrorMessage('No active editor to run.');
             return;
         }
-        if (editor.document.languageId !== 'flick') {
-            vscode.window.showErrorMessage('Current file is not a Flick file');
+        const document = editor.document;
+        if (document.languageId !== 'flick') {
+            vscode_1.window.showErrorMessage('The active file is not a Flick file.');
             return;
         }
-        const selection = editor.selection;
-        const text = editor.document.getText(selection);
-        if (!text.trim()) {
-            vscode.window.showWarningMessage('No code selected');
-            return;
+        vscode_1.window.showInformationMessage('Running selection is not supported yet. Running entire file instead.');
+        if (document.isDirty) {
+            await document.save();
         }
-        runFlickCode(text, context);
-    });
-    // Watch for document changes for diagnostics
-    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument((event) => {
-        if (event.document.languageId === 'flick') {
-            diagnosticsProvider?.updateDiagnostics(event.document);
-            languageServer?.clearCache(event.document.uri);
-        }
+        runFlickFile(document);
     }));
-    // Update diagnostics on open
-    context.subscriptions.push(vscode.workspace.onDidOpenTextDocument((document) => {
-        if (document.languageId === 'flick') {
-            diagnosticsProvider?.updateDiagnostics(document);
-            languageServer?.clearCache(document.uri);
-        }
-    }));
-    // Clear diagnostics on close
-    context.subscriptions.push(vscode.workspace.onDidCloseTextDocument((document) => {
-        if (document.languageId === 'flick') {
-            diagnosticsProvider?.clearDiagnostics(document.uri);
-            languageServer?.clearCache(document.uri);
-        }
-    }));
-    context.subscriptions.push(runFileCommand, runSelectionCommand);
-}
-async function runFlickFile(filePath, context) {
-    const config = vscode.workspace.getConfiguration('flick');
-    const interpreterPath = config.get('interpreterPath');
-    // Find the interpreter
-    const extensionPath = context.extensionPath;
-    const bundledInterpreterPath = path.join(extensionPath, 'temp_interpreter', 'cli.ts');
-    // Create output channel for results
-    const outputChannel = vscode.window.createOutputChannel('Flick Output');
-    outputChannel.show(true);
-    outputChannel.clear();
-    outputChannel.appendLine(`Running: ${path.basename(filePath)}`);
-    outputChannel.appendLine('═'.repeat(50));
-    try {
-        // Use flick run command
-        const flickCommand = interpreterPath || 'flick';
-        const process = (0, child_process_1.spawn)(flickCommand, ['run', filePath], {
-            cwd: path.dirname(filePath),
-            shell: true
-        });
-        process.stdout.on('data', (data) => {
-            outputChannel.append(data.toString());
-        });
-        process.stderr.on('data', (data) => {
-            outputChannel.append(data.toString());
-        });
-        process.on('error', (error) => {
-            outputChannel.appendLine(`\nError: ${error.message}`);
-            vscode.window.showErrorMessage(`Failed to run Flick file: ${error.message}`);
-        });
-        process.on('close', (code) => {
-            outputChannel.appendLine('');
-            outputChannel.appendLine('═'.repeat(50));
-            outputChannel.appendLine(`Process exited with code ${code}`);
-            if (code !== 0) {
-                vscode.window.showErrorMessage(`Flick execution failed with code ${code}`);
-            }
-        });
-    }
-    catch (error) {
-        outputChannel.appendLine(`Error: ${error.message}`);
-        vscode.window.showErrorMessage(`Failed to run Flick file: ${error.message}`);
-    }
-}
-async function runFlickCode(code, context) {
-    const outputChannel = vscode.window.createOutputChannel('Flick Output');
-    outputChannel.show(true);
-    outputChannel.clear();
-    outputChannel.appendLine('Running selected code:');
-    outputChannel.appendLine('═'.repeat(50));
-    outputChannel.appendLine(code);
-    outputChannel.appendLine('═'.repeat(50));
-    // Create a temporary file
-    const tempDir = context.globalStorageUri.fsPath;
-    try {
-        if (!fs.existsSync(tempDir)) {
-            fs.mkdirSync(tempDir, { recursive: true });
-        }
-        const tempFile = path.join(tempDir, 'temp.fk');
-        fs.writeFileSync(tempFile, code);
-        await runFlickFile(tempFile, context);
-    }
-    catch (error) {
-        outputChannel.appendLine(`Error: ${error.message}`);
-        vscode.window.showErrorMessage(`Failed to run Flick code: ${error.message}`);
-    }
 }
 function deactivate() {
-    if (diagnosticsProvider) {
-        diagnosticsProvider.dispose();
+    if (!client) {
+        return undefined;
     }
+    return client.stop();
+}
+function getOrCreateTerminal() {
+    const existing = vscode_1.window.terminals.find(t => t.name === 'Flick');
+    return existing ?? vscode_1.window.createTerminal({ name: 'Flick' });
+}
+function getInterpreterPath() {
+    const config = vscode_1.workspace.getConfiguration('flick');
+    const configured = config.get('interpreterPath');
+    return configured && configured.trim().length > 0 ? configured : 'flick';
+}
+function buildRunFileCommand(interpreter, relativePath) {
+    return `${quote(interpreter)} run ${quote(relativePath)}`;
+}
+function runFlickFile(document) {
+    const interpreter = getInterpreterPath();
+    const folder = vscode_1.workspace.getWorkspaceFolder(document.uri);
+    const filePath = document.uri.fsPath;
+    const basePath = folder?.uri.fsPath;
+    const relativePath = basePath ? path.relative(basePath, filePath) : filePath;
+    const terminal = getOrCreateTerminal();
+    terminal.show(true);
+    if (basePath) {
+        terminal.sendText(`cd ${quote(basePath)}`, true);
+    }
+    const command = buildRunFileCommand(interpreter, relativePath);
+    terminal.sendText(command, true);
+}
+function quote(value) {
+    if (/^[^\s"']+$/.test(value)) {
+        return value;
+    }
+    const escaped = value.replace(/"/g, '\\"');
+    return `"${escaped}"`;
 }
 //# sourceMappingURL=extension.js.map

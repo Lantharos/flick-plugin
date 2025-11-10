@@ -24,23 +24,33 @@
   "main": "./out/extension.js",
   "contributes": {
     "iconThemes": [
-      { 
+      {
         "id": "flick-icon-theme",
         "label": "Flick File Icons",
         "path": "./file-icons/flick-icon-theme.json"
       }
     ],
-    "languages": [{
-      "id": "flick",
-      "aliases": ["Flick", "flick"],
-      "extensions": [".fk", ".flick"],
-      "configuration": "./language-configuration.json"
-    }],
-    "grammars": [{
-      "language": "flick",
-      "scopeName": "source.flick",
-      "path": "./syntaxes/flick.tmLanguage.json"
-    }],
+    "languages": [
+      {
+        "id": "flick",
+        "aliases": [
+          "Flick",
+          "flick"
+        ],
+        "extensions": [
+          ".fk",
+          ".flick"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "flick",
+        "scopeName": "source.flick",
+        "path": "./syntaxes/flick.tmLanguage.json"
+      }
+    ],
     "commands": [
       {
         "command": "flick.runFile",
@@ -113,5 +123,9 @@
     "eslint": "^8.56.0",
     "typescript": "^5.3.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12"
+  }
 }
