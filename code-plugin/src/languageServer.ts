@@ -554,16 +554,42 @@ export class FlickLanguageServer {
                         children: []
                     };
 
-                    const windowMethods: Array<{ name: string; type: 'task' | 'variable' } > = [
+                    const windowMethods: Array<{ name: string; type: 'task' | 'variable'; dataType?: string }> = [
                         { name: 'open', type: 'task' }, { name: 'print', type: 'task' },
                         { name: 'heading', type: 'task' }, { name: 'button', type: 'task' },
                         { name: 'input', type: 'task' }, { name: 'getInputValue', type: 'task' },
-                        { name: 'image', type: 'task' }, { name: 'canvas', type: 'task' },
+                        { name: 'image', type: 'task' }, { name: 'canvas', type: 'task', dataType: 'Canvas' },
                         { name: 'grid', type: 'task' }, { name: 'card', type: 'task' },
                         { name: 'divider', type: 'task' }, { name: 'alert', type: 'task' },
                         { name: 'prompt', type: 'task' }, { name: 'clear', type: 'task' },
                         { name: 'close', type: 'task' }
                     ];
+
+                    const canvasScope: Scope = {
+                        type: 'group',
+                        name: 'Canvas',
+                        startLine: i,
+                        endLine: i,
+                        parent: globalScope,
+                        symbols: new Map(),
+                        children: []
+                    };
+
+                    const canvasMethods: Array<{ name: string; type: 'task' | 'variable' }> = [
+                        { name: 'rect', type: 'task' },
+                        { name: 'circle', type: 'task' },
+                        { name: 'line', type: 'task' },
+                        { name: 'text', type: 'task' }
+                    ];
+
+                    for (const method of canvasMethods) {
+                        const canvasSymbol: FlickSymbol = {
+                            name: method.name,
+                            type: method.type === 'task' ? 'task' : 'variable',
+                            range: { start: { line: i, character: 0 }, end: { line: i, character: line.length } }
+                        };
+                        canvasScope.symbols.set(method.name, canvasSymbol);
+                    }
 
                     for (const m of windowMethods) {
                         const sym: FlickSymbol = {
@@ -571,9 +597,13 @@ export class FlickLanguageServer {
                             type: m.type === 'task' ? 'task' : 'variable',
                             range: { start: { line: i, character: 0 }, end: { line: i, character: line.length } },
                         };
+                        if (m.dataType) {
+                            sym.dataType = m.dataType;
+                        }
                         windowGroupScope.symbols.set(m.name, sym);
                     }
                     globalScope.children.push(windowGroupScope);
+                    globalScope.children.push(canvasScope);
                 }
                 continue;
             }
@@ -592,6 +622,7 @@ export class FlickLanguageServer {
 
             const isArrowBlock = /=>\s*$/.test(trimmed);
             const isBraceBlock = /\{\s*$/.test(trimmed);
+            const isWindowCanvasBlock = isArrowBlock && /\bWindow[\/.]canvas\b/.test(strippedLine);
 
             if (/^\s*end\b/.test(trimmed)) {
                 if (scopeStack.length > 1 && currentScope.type !== 'global' && currentScope.type !== 'group' && currentScope.type !== 'blueprint') {
@@ -708,10 +739,27 @@ export class FlickLanguageServer {
                 const symbolType = currentScope.type === 'group' ? 'field' : 'variable';
                 const varSymbol: FlickSymbol = { name: varName, type: symbolType, mutable, varType, range: { start: { line: i, character: 0 }, end: { line: i, character: line.length } } };
                 currentScope.symbols.set(varName, varSymbol);
+
+                if (/=\s*Window[\/.]canvas\b/.test(strippedLine)) {
+                    if (!varSymbol.varType) {
+                        varSymbol.varType = 'Canvas';
+                    }
+                    varSymbol.dataType = 'Canvas';
+                }
             }
 
             if (isArrowBlock && !taskMatch && !loopMatch && !controlFlowMatch) {
                 newScope = { type: 'lambda', startLine: i, parent: currentScope, symbols: new Map(), children: [] };
+                if (isWindowCanvasBlock) {
+                    const canvasSymbol: FlickSymbol = {
+                        name: 'canvas',
+                        type: 'variable',
+                        mutable: false,
+                        varType: 'Canvas',
+                        range: { start: { line: i, character: 0 }, end: { line: i, character: line.length } }
+                    };
+                    newScope.symbols.set('canvas', canvasSymbol);
+                }
             }
 
             if (newScope) {
